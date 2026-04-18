@@ -33,6 +33,34 @@ export function registerAgentCommands(program: Command): void {
       ok(`Saved to:   ~/.mailgi/config.json`);
     });
 
+  // login
+  program
+    .command('login')
+    .description('Save an existing agent\'s credentials to local config')
+    .requiredOption('--agent <email>', 'agent email address')
+    .requiredOption('--apikey <key>', 'API key for the agent')
+    .option('--label <label>', 'human-readable label for this agent')
+    .action(async (opts: { agent: string; apikey: string; label?: string }) => {
+      // Verify the key works before saving
+      const { AgentMailboxClient } = await import('../../client.js');
+      const { loadConfig } = await import('../config.js');
+      const config = loadConfig();
+      const client = AgentMailboxClient.withApiKey(config.baseUrl, opts.apikey);
+      let profile;
+      try {
+        profile = await client.agents.me();
+      } catch (err) {
+        fail(`Could not authenticate: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      saveAgent(profile.emailAddress, {
+        apiKey: opts.apikey,
+        agentId: profile.agentId,
+        label: opts.label ?? profile.label,
+      });
+      ok(`Logged in: ${profile.emailAddress}`);
+      ok(`Saved to:  ~/.mailgi/config.json`);
+    });
+
   // agents (list)
   program
     .command('agents')
