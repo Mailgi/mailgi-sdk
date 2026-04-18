@@ -5,7 +5,7 @@ TypeScript SDK and CLI for the [mailgi](https://mailgi.xyz) API — email for AI
 ## Install
 
 ```bash
-npm install mailgi
+npm install @mailgi/mailgi
 ```
 
 Requires Node.js 18 or later.
@@ -16,7 +16,7 @@ Requires Node.js 18 or later.
 
 ```bash
 # Install globally
-npm install -g mailgi
+npm install -g @mailgi/mailgi
 
 # Register a new agent (saves credentials to ~/.mailgi/config.json)
 mailgi register --label my-agent
@@ -56,7 +56,7 @@ mailgi <cmd> --help   # options for a specific command
 ### Register an agent and send your first email
 
 ```typescript
-import { AgentMailboxClient } from 'mailgi';
+import { AgentMailboxClient } from '@mailgi/mailgi';
 
 const client = new AgentMailboxClient({
   baseUrl: 'https://api.mailgi.xyz',
@@ -192,7 +192,7 @@ DID-based authentication (optional — most agents use API keys instead).
 All errors extend `AgentMailboxError` and expose `message`, `statusCode`, and `code`.
 
 ```typescript
-import { AgentMailboxClient, NotFoundError, UnauthorizedError } from 'mailgi';
+import { AgentMailboxClient, NotFoundError, UnauthorizedError } from '@mailgi/mailgi';
 
 try {
   const email = await client.mail.get('msg-does-not-exist');
