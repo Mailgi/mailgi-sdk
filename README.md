@@ -1,106 +1,126 @@
-# @agentmailbox/sdk
+# mailgi
 
-TypeScript SDK for the [AgentMailbox](https://agentmailbox.io) API — email infrastructure for AI agents.
+TypeScript SDK and CLI for the [mailgi](https://mailgi.xyz) API — email for AI agents.
 
 ## Install
 
 ```bash
-npm install @agentmailbox/sdk
+npm install mailgi
 ```
 
-Requires Node.js 18 or later (uses the native `fetch` API).
+Requires Node.js 18 or later.
 
 ---
 
-## Quick start
+## CLI
 
-### 1. Register an agent and send your first email
+```bash
+# Install globally
+npm install -g mailgi
+
+# Register a new agent (saves credentials to ~/.mailgi/config.json)
+mailgi register --label my-agent
+
+# List registered agents
+mailgi agents
+
+# Add an existing agent by API key
+mailgi login --agent buzzing-falcon@mailgi.xyz --apikey amb_...
+
+# Send an email
+mailgi send --agent buzzing-falcon --to alice@example.com --subject "Hi" --body "Hello"
+
+# Read inbox
+mailgi inbox --agent buzzing-falcon
+
+# Read a message
+mailgi read --agent buzzing-falcon <message-id>
+
+# Check balance
+mailgi billing --agent buzzing-falcon
+```
+
+`--agent` accepts a full email address (`buzzing-falcon@mailgi.xyz`) or just the username (`buzzing-falcon`).
+
+All commands support `--json` for raw JSON output.
+
+```bash
+mailgi --help         # all commands
+mailgi <cmd> --help   # options for a specific command
+```
+
+---
+
+## SDK — Quick start
+
+### Register an agent and send your first email
 
 ```typescript
-import { AgentMailboxClient } from '@agentmailbox/sdk';
+import { AgentMailboxClient } from 'mailgi';
 
 const client = new AgentMailboxClient({
-  baseUrl: 'https://api.agentmailbox.io',
+  baseUrl: 'https://api.mailgi.xyz',
 });
 
-// Register an agent with a DID — returns an email address and API key.
-// Store the API key securely; it is only shown once.
-const registration = await client.agents.register({
-  did: 'did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK',
-  label: 'My AI Agent',
-});
+// Register an agent — returns an email address and API key.
+// Store the API key securely; it is shown only once.
+const registration = await client.agents.register({ label: 'my-agent' });
 
 console.log('Email:', registration.emailAddress);
-// => agent-abc123@agentmailbox.io
+// => buzzing-falcon@mailgi.xyz
 
 console.log('API Key:', registration.apiKey);
-// => amk_live_xxxxxxxxxxxxxxxxxxxx  (save this!)
+// => amb_...  (save this!)
 
-// Authenticate subsequent requests with the API key.
+// Use the key for subsequent requests
 client.apiKey = registration.apiKey;
 ```
 
-### 2. Send an email
+### Send an email
 
 ```typescript
 const { messageId } = await client.mail.send({
-  to: ['recipient@example.com'],
-  subject: 'Hello from my AI agent',
-  textBody: 'This message was sent by an AI agent via AgentMailbox.',
-  htmlBody: '<p>This message was sent by an AI agent via <b>AgentMailbox</b>.</p>',
+  to: ['alice@example.com'],
+  subject: 'Hello from my agent',
+  textBody: 'This was sent by an AI agent via mailgi.',
 });
-
-console.log('Sent message ID:', messageId);
 ```
 
-### 3. Read incoming mail
+Sending to external addresses costs **$0.005 per recipient** (USDC). Agent-to-agent mail (`@mailgi.xyz`) is always free.
+
+### Read incoming mail
 
 ```typescript
-// List messages in the inbox
-const { messages, total } = await client.mail.list({
-  mailboxId: 'inbox',
-  limit: 20,
-  sort: 'desc',
-});
+const { messages, total } = await client.mail.list({ limit: 20, sort: 'desc' });
 
-console.log(`${total} messages in inbox`);
-
-// Fetch the full body of the first message
 if (messages.length > 0) {
   const email = await client.mail.get(messages[0].id);
   console.log('Subject:', email.subject);
   console.log('From:',    email.from.map(f => f.email).join(', '));
-  console.log('Body:\n',  email.textBody ?? email.htmlBody);
+  console.log('Body:',    email.textBody);
 
-  // Mark as read
   await client.mail.setFlags(email.id, { seen: true });
 }
 ```
 
-### 4. Construct a client from a stored API key
+### Construct a client from a stored API key
 
 ```typescript
-import { AgentMailboxClient } from '@agentmailbox/sdk';
-
-// Shorthand factory
 const client = AgentMailboxClient.withApiKey(
-  'https://api.agentmailbox.io',
-  process.env.AGENTMAILBOX_API_KEY!,
+  'https://api.mailgi.xyz',
+  process.env.MAILGI_API_KEY!,
 );
-
-const profile = await client.agents.me();
-console.log(profile.emailAddress);
 ```
 
 ---
 
-## API reference
+## SDK — API reference
 
 ### Constructor
 
 ```typescript
 const client = new AgentMailboxClient({
-  baseUrl: string,   // required — e.g. 'https://api.agentmailbox.io'
+  baseUrl: string,   // e.g. 'https://api.mailgi.xyz'
   apiKey?: string,   // set now or assign client.apiKey later
   timeout?: number,  // ms, default 30000
 });
@@ -114,21 +134,6 @@ const client = new AgentMailboxClient({
 | `agents.me()` | `GET /v1/agents/me` | Yes |
 | `agents.delete()` | `DELETE /v1/agents/me` | Yes |
 
-### `client.apiKeys`
-
-| Method | Endpoint | Auth |
-|--------|----------|------|
-| `apiKeys.list()` | `GET /v1/apikeys` | Yes |
-| `apiKeys.create(req?)` | `POST /v1/apikeys` | Yes |
-| `apiKeys.revoke(keyId)` | `DELETE /v1/apikeys/:id` | Yes |
-
-### `client.auth`
-
-| Method | Endpoint | Auth |
-|--------|----------|------|
-| `auth.challenge(did)` | `POST /v1/auth/challenge` | No |
-| `auth.verify(req)` | `POST /v1/auth/verify` | No |
-
 ### `client.mail`
 
 | Method | Endpoint | Auth |
@@ -140,23 +145,6 @@ const client = new AgentMailboxClient({
 | `mail.move(id, mailboxId)` | `PATCH /v1/mail/:id/move` | Yes |
 | `mail.setFlags(id, flags)` | `PATCH /v1/mail/:id/flags` | Yes |
 
-`list` options:
-
-```typescript
-interface ListMailOptions {
-  mailboxId?: string;       // filter to a specific folder
-  limit?: number;
-  position?: number;        // cursor for pagination
-  sort?: 'asc' | 'desc';
-}
-```
-
-`setFlags` options:
-
-```typescript
-{ seen?: boolean; flagged?: boolean }
-```
-
 ### `client.mailboxes`
 
 | Method | Endpoint | Auth |
@@ -165,6 +153,30 @@ interface ListMailOptions {
 | `mailboxes.create(req)` | `POST /v1/mailboxes` | Yes |
 | `mailboxes.delete(id)` | `DELETE /v1/mailboxes/:id` | Yes |
 | `mailboxes.rename(id, name)` | `PATCH /v1/mailboxes/:id` | Yes |
+
+### `client.apiKeys`
+
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| `apiKeys.list()` | `GET /v1/apikeys` | Yes |
+| `apiKeys.create(req?)` | `POST /v1/apikeys` | Yes |
+| `apiKeys.revoke(keyId)` | `DELETE /v1/apikeys/:id` | Yes |
+
+### `client.billing`
+
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| `billing.get()` | `GET /v1/billing` | Yes |
+| `billing.transactions(opts?)` | `GET /v1/billing/transactions` | Yes |
+
+### `client.auth`
+
+DID-based authentication (optional — most agents use API keys instead).
+
+| Method | Endpoint | Auth |
+|--------|----------|------|
+| `auth.challenge(did)` | `POST /v1/auth/challenge` | No |
+| `auth.verify(req)` | `POST /v1/auth/verify` | No |
 
 ### `client.health`
 
@@ -177,68 +189,31 @@ interface ListMailOptions {
 
 ## Error handling
 
-All errors thrown by the SDK extend `AgentMailboxError`, which exposes:
-
-- `message` — human-readable description
-- `statusCode` — HTTP status code
-- `code` — machine-readable string (e.g. `'NOT_FOUND'`, `'UNAUTHORIZED'`)
+All errors extend `AgentMailboxError` and expose `message`, `statusCode`, and `code`.
 
 ```typescript
-import {
-  AgentMailboxClient,
-  AgentMailboxError,
-  NotFoundError,
-  UnauthorizedError,
-  ConflictError,
-  BadRequestError,
-} from '@agentmailbox/sdk';
+import { AgentMailboxClient, NotFoundError, UnauthorizedError } from 'mailgi';
 
 try {
   const email = await client.mail.get('msg-does-not-exist');
 } catch (err) {
   if (err instanceof NotFoundError) {
-    console.log('Message not found:', err.message);
+    console.log('Not found:', err.message);
   } else if (err instanceof UnauthorizedError) {
-    console.log('Check your API key — authentication failed.');
-  } else if (err instanceof ConflictError) {
-    console.log('Conflict:', err.message);
-  } else if (err instanceof BadRequestError) {
-    console.log('Bad request:', err.message);
-  } else if (err instanceof AgentMailboxError) {
-    // Catch-all for any other API error (5xx, etc.)
-    console.log(`API error ${err.statusCode} [${err.code}]: ${err.message}`);
-  } else {
-    throw err; // rethrow unexpected errors
+    console.log('Bad API key');
   }
 }
 ```
 
-### Timeout
-
-Requests time out after 30 seconds by default. On timeout the SDK throws an `AgentMailboxError` with `code: 'TIMEOUT'` and `statusCode: 408`. Configure via the `timeout` constructor option:
-
-```typescript
-const client = new AgentMailboxClient({
-  baseUrl: 'https://api.agentmailbox.io',
-  apiKey: process.env.AGENTMAILBOX_API_KEY!,
-  timeout: 10_000, // 10 seconds
-});
-```
+Requests time out after 30s by default. Timeout throws `AgentMailboxError` with `code: 'TIMEOUT'`.
 
 ---
 
-## Development
+## Links
 
-```bash
-# Build
-npm run build
-
-# Run tests (single pass)
-npm test
-
-# Watch mode
-npm run test:watch
-```
+- **API docs**: https://api.mailgi.xyz/docs
+- **OpenAPI spec**: https://api.mailgi.xyz/openapi.json
+- **Website**: https://mailgi.xyz
 
 ---
 
