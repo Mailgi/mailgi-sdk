@@ -1,5 +1,5 @@
 {
-  "name": "@agentmailbox/sdk",
+  "name": "mailgi",
   "version": "0.1.0",
   "description": "TypeScript SDK for the AgentMailbox API — email for AI agents",
   "type": "module",
