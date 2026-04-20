@@ -8,10 +8,6 @@ import {
 import type {
   Agent,
   ApiKey,
-  BillingInfo,
-  BalanceTransaction,
-  ListTransactionsOptions,
-  ListTransactionsResponse,
   ChallengeResponse,
   CreateApiKeyRequest,
   CreateApiKeyResponse,
@@ -287,33 +283,6 @@ export class AgentMailboxClient {
       this.request<void>('PATCH', `/v1/mailboxes/${encodeURIComponent(id)}`, {
         name,
       }),
-  };
-
-  // ---------------------------------------------------------------------------
-  // billing namespace
-  // ---------------------------------------------------------------------------
-
-  readonly billing = {
-    /**
-     * Get the agent's balance, deposit addresses, and pricing.
-     * Creates deposit addresses on first call if billing is configured.
-     */
-    get: (): Promise<BillingInfo> =>
-      this.request<BillingInfo>('GET', '/v1/billing'),
-
-    /**
-     * List balance transactions (deposits and deductions), newest first.
-     */
-    transactions: (opts?: ListTransactionsOptions): Promise<ListTransactionsResponse> => {
-      const params = new URLSearchParams();
-      if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
-      if (opts?.offset !== undefined) params.set('offset', String(opts.offset));
-      const qs = params.toString();
-      return this.request<ListTransactionsResponse>(
-        'GET',
-        `/v1/billing/transactions${qs ? `?${qs}` : ''}`,
-      );
-    },
   };
 
   // ---------------------------------------------------------------------------

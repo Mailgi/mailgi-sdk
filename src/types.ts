@@ -145,43 +145,6 @@ export interface CreateMailboxRequest {
   parentId?: string;
 }
 
-// --- Billing ---
-export interface DepositAddresses {
-  evm: string;
-  solana: string;
-}
-
-export interface BillingInfo {
-  balanceUsd: number;
-  depositAddresses: DepositAddresses | null;
-  pricePerExternalEmail: number;
-
-  acceptedToken: string;
-  networks: { evm: string[]; solana: string[] };
-}
-
-export interface BalanceTransaction {
-  id: string;
-  type: 'deposit' | 'deduction';
-  amountUsd: number;
-  txHash: string | null;
-  chain: string | null;
-  emailCount: number | null;
-  createdAt: string;
-}
-
-export interface ListTransactionsOptions {
-  limit?: number;
-  offset?: number;
-}
-
-export interface ListTransactionsResponse {
-  transactions: BalanceTransaction[];
-  total: number;
-  limit: number;
-  offset: number;
-}
-
 // --- Health ---
 export interface HealthResponse {
   status: 'ok' | 'degraded';
